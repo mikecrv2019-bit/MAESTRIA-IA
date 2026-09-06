@@ -1,2 +1,2 @@
-# MESTRIA---IA
+# MAESTRIA---IA
 Notebooks y proyectos de la Maestría en IA

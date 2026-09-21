@@ -1,0 +1,14 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.7, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\jaimelopez\AppData\Local\Python\pythoncore-3.14-64\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\jaimelopez\Documents\ATLANTIS UNIVERSITY 2026 - 2027\MAI540 - SEP 01 2026 - OCT 08 2026\MAI450 - mi-proyecto\MAESTRIA-IA
+collecting ... collected 6 items
+
+test_app.py::test_construir_caracteristicas_no_produce_infinitos_ni_nulos PASSED [ 16%]
+test_app.py::test_columna_fuga_no_esta_en_columnas_predictoras PASSED    [ 33%]
+test_app.py::test_predecir_caso_devuelve_benigno_o_maligno PASSED        [ 50%]
+test_app.py::test_validar_datos_detiene_ante_datos_invalidos PASSED      [ 66%]
+test_app.py::test_validar_datos_no_detiene_si_detener_es_false PASSED    [ 83%]
+test_app.py::test_entrenar_modelo_corre_de_extremo_a_extremo_sin_la_fuga PASSED [100%]
+
+============================== 6 passed in 2.49s ==============================

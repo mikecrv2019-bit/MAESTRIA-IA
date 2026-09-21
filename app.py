@@ -18,6 +18,13 @@ evidencia completa):
    que deberia haber atrapado el bug del punto 1 estaba desconectado. Se
    corrige la firma (detener pasa a ser un parametro) y se conecta como
    guardia obligatoria dentro de entrenar_modelo().
+4. cargar_datos(): usaba un `np.random.RandomState` global compartido entre
+   llamadas, asi que dos llamadas en la misma sesion (mismo RANDOM_STATE)
+   producian columnas sinteticas distintas porque el generador ya habia
+   avanzado. Se crea el generador dentro de la funcion para que cada
+   llamada sea reproducible por si misma. Ademas, entrenar_modelo() ahora
+   estratifica el train_test_split por `diagnostico`, que esta
+   desbalanceado (62.7% / 37.3%).
 """
 import numpy as np
 import pandas as pd
@@ -28,7 +35,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 RANDOM_STATE = 42
-rng = np.random.RandomState(RANDOM_STATE)
 
 # Columna identificada como fuga de informacion (ver INFORME_TAREA_3_1.md,
 # seccion 2): es 100% determinista respecto a `diagnostico` porque las
@@ -44,8 +50,9 @@ COLUMNAS_PREDICTORAS = [
 ]
 
 
-def cargar_datos():
+def cargar_datos(random_state=RANDOM_STATE):
     """Carga el dataset de biopsias y agrega las columnas clinicas complementarias."""
+    rng = np.random.RandomState(random_state)
     data = load_breast_cancer(as_frame=True)
     df = data.frame.copy()
     df['diagnostico'] = data.target  # 0 = maligno, 1 = benigno
@@ -135,7 +142,7 @@ def entrenar_modelo(df, usar_class_weight=False, columnas_predictoras=None, vali
     X = df[columnas]
     y = df['diagnostico']
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.25, random_state=RANDOM_STATE
+        X, y, test_size=0.25, random_state=RANDOM_STATE, stratify=y
     )
 
     kwargs = {'max_iter': 5000}

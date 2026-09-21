@@ -2,10 +2,17 @@
 """Pipeline de diagnostico asistido de biopsias de mama (Tarea 3.1, Modulo 3).
 
 Extraido del notebook a un modulo importable para poder probarlo con
-pytest (ver test_app.py). Fix aplicado en esta version: construir_caracteristicas()
-dividia por num_biopsias_previas, que puede ser 0, produciendo `inf` y
-tumbando entrenar_modelo() con ValueError. Ver INFORME_TAREA_3_1.md
-(seccion "Diagnostico") para las hipotesis descartadas y la evidencia.
+pytest (ver test_app.py).
+
+Fixes aplicados en esta version (ver INFORME_TAREA_3_1.md para la
+evidencia completa):
+1. construir_caracteristicas(): dividia por num_biopsias_previas, que
+   puede ser 0, produciendo `inf` y tumbando entrenar_modelo() con
+   ValueError.
+2. entrenar_modelo(): 'sesiones_tratamiento_programadas' se retira de
+   COLUMNAS_PREDICTORAS por fuga de informacion (solo se conoce despues
+   del diagnostico: se programan sesiones de tratamiento porque ya se
+   sabe que el tumor es maligno).
 """
 import numpy as np
 import pandas as pd
@@ -18,11 +25,17 @@ from sklearn.metrics import accuracy_score
 RANDOM_STATE = 42
 rng = np.random.RandomState(RANDOM_STATE)
 
+# Columna identificada como fuga de informacion (ver INFORME_TAREA_3_1.md,
+# seccion 2): es 100% determinista respecto a `diagnostico` porque las
+# sesiones de tratamiento solo se programan DESPUES de saber que el tumor
+# es maligno. Se deja el nombre aqui, fuera de COLUMNAS_PREDICTORAS, para
+# que quede explicito por que no aparece como predictor.
+COLUMNA_FUGA = 'sesiones_tratamiento_programadas'
+
 COLUMNAS_PREDICTORAS = [
     'mean texture', 'mean smoothness', 'mean symmetry', 'mean fractal dimension',
     'texture error', 'smoothness error', 'symmetry error',
     'variabilidad_por_biopsia', 'num_biopsias_previas',
-    'sesiones_tratamiento_programadas',
 ]
 
 
@@ -90,9 +103,15 @@ def construir_caracteristicas(df):
     return df
 
 
-def entrenar_modelo(df, usar_class_weight=False):
-    """Entrena un clasificador de regresion logistica y devuelve el modelo y sus metricas."""
-    X = df[COLUMNAS_PREDICTORAS]
+def entrenar_modelo(df, usar_class_weight=False, columnas_predictoras=None):
+    """Entrena un clasificador de regresion logistica y devuelve el modelo y sus metricas.
+
+    columnas_predictoras permite pasar una lista distinta a COLUMNAS_PREDICTORAS
+    (por ejemplo, para reproducir el accuracy "con fuga" y compararlo contra
+    el corregido, sobre la misma particion; ver INFORME_TAREA_3_1.md).
+    """
+    columnas = columnas_predictoras if columnas_predictoras is not None else COLUMNAS_PREDICTORAS
+    X = df[columnas]
     y = df['diagnostico']
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.25, random_state=RANDOM_STATE

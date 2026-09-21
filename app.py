@@ -13,6 +13,11 @@ evidencia completa):
    COLUMNAS_PREDICTORAS por fuga de informacion (solo se conoce despues
    del diagnostico: se programan sesiones de tratamiento porque ya se
    sabe que el tumor es maligno).
+3. validar_datos(): tenia un NameError (`detener` no estaba definido en
+   ningun lado) y nunca se invocaba desde el pipeline real -- el chequeo
+   que deberia haber atrapado el bug del punto 1 estaba desconectado. Se
+   corrige la firma (detener pasa a ser un parametro) y se conecta como
+   guardia obligatoria dentro de entrenar_modelo().
 """
 import numpy as np
 import pandas as pd
@@ -67,14 +72,22 @@ def explorar_datos(df):
     print(nulos[nulos > 0] if nulos.any() else "Ninguno")
 
 
-def validar_datos(df, columnas):
-    """Revisa que las columnas indicadas no tengan nulos ni valores infinitos."""
+def validar_datos(df, columnas, detener=True):
+    """Revisa que las columnas indicadas no tengan nulos ni valores infinitos.
+
+    REFACTOR: `detener` era una variable global inexistente (NameError en
+    cuanto encontraba un problema); ahora es un parametro. detener=True
+    (por defecto) lanza ValueError para que un dato corrupto nunca llegue
+    silenciosamente a entrenar un modelo. detener=False solo avisa y sigue
+    (util para diagnostico exploratorio, ver notebook).
+    """
     problemas = {}
     for col in columnas:
         n_nulos = df[col].isna().sum()
         n_infinitos = np.isinf(df[col]).sum() if np.issubdtype(df[col].dtype, np.number) else 0
         if n_nulos or n_infinitos:
             problemas[col] = {'nulos': int(n_nulos), 'infinitos': int(n_infinitos)}
+
     if problemas:
         detalle = "\n".join(
             f"  - {c}: {d['nulos']} nulos, {d['infinitos']} infinitos"
@@ -103,14 +116,22 @@ def construir_caracteristicas(df):
     return df
 
 
-def entrenar_modelo(df, usar_class_weight=False, columnas_predictoras=None):
+def entrenar_modelo(df, usar_class_weight=False, columnas_predictoras=None, validar=True):
     """Entrena un clasificador de regresion logistica y devuelve el modelo y sus metricas.
 
     columnas_predictoras permite pasar una lista distinta a COLUMNAS_PREDICTORAS
     (por ejemplo, para reproducir el accuracy "con fuga" y compararlo contra
     el corregido, sobre la misma particion; ver INFORME_TAREA_3_1.md).
+
+    validar=True (por defecto) corre validar_datos() antes de entrenar, para
+    que un `inf`/nulo como el del punto 1 del modulo nunca vuelva a llegar
+    en silencio hasta LogisticRegression.fit().
     """
     columnas = columnas_predictoras if columnas_predictoras is not None else COLUMNAS_PREDICTORAS
+
+    if validar:
+        validar_datos(df, columnas, detener=True)
+
     X = df[columnas]
     y = df['diagnostico']
     X_train, X_test, y_train, y_test = train_test_split(

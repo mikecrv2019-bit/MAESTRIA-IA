@@ -193,12 +193,26 @@ No pedidas explícitamente en la consigna, pero necesarias o directamente
 relevantes para lo que sí se pidió — señaladas aquí para que se puedan
 revisar y, si no se está de acuerdo, revertir:
 
-- **Se extrajo el pipeline a `app.py`.** El notebook original solo definía
-  las funciones dentro de sus propias celdas; eso no es importable por
-  `pytest`. `app.py` es ahora la fuente única de verdad del pipeline, y el
-  notebook (`Copy_of_App_Diagnostico_Biopsias_Mama.ipynb`) lo importa en vez
-  de redefinir las funciones, para que no queden dos copias de la misma
-  lógica que se puedan desincronizar.
+- **Se extrajo el pipeline a `app.py` para que `pytest` pudiera probarlo —
+  decisión revertida a medias tras una falla real.** El notebook original
+  solo definía las funciones dentro de sus propias celdas, lo cual no es
+  importable por `pytest`, así que se creó `app.py` como módulo, y en un
+  primer momento el notebook lo importaba (`from app import ...`) en vez de
+  redefinir las funciones, para no mantener dos copias de la misma lógica.
+  Al probarlo en Google Colab (el badge del notebook apunta ahí) esto falló
+  con `ModuleNotFoundError: No module named 'app'`: Colab abre el `.ipynb`
+  en una máquina virtual nueva que no tiene ningún otro archivo del
+  repositorio, así que un `import` a un módulo local nunca puede resolverse.
+  Reproducido y confirmado con el traceback real del usuario, se revirtió la
+  parte de *importar*: el notebook ahora vuelve a definir las funciones
+  directamente en sus celdas (autocontenido, corre en Colab sin archivos
+  adjuntos), mientras que `app.py` se mantiene con la misma lógica
+  exclusivamente para `test_app.py`. El costo de esta marcha atrás es que
+  ahora sí hay dos copias que mantener sincronizadas a mano si el pipeline
+  vuelve a cambiar — un trade-off consciente, no un descuido: `pytest`
+  necesita un módulo importable y Colab necesita un notebook sin
+  dependencias externas, y no hay una sola estructura de archivos que
+  satisfaga ambas cosas a la vez.
 - **`cargar_datos()` ya no depende de un `np.random.RandomState` global
   compartido.** En la versión original, `rng` se creaba una sola vez a nivel
   de módulo y cada llamada a `cargar_datos()` avanzaba su estado — dos

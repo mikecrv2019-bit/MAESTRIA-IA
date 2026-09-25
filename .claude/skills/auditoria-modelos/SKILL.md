@@ -5,10 +5,10 @@ argument-hint: <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ningu
 arguments: [ruta, objetivo, subgrupos, informe]
 disallowed-tools: Edit NotebookEdit
 metadata:
-  version: "1.2"
+  version: "1.3"
 ---
 
-**Versión de esta Skill: 1.2** (este número es el que se escribe en el campo `Skill` del informe).
+**Versión de esta Skill: 1.3** (este número es el que se escribe en el campo `Skill` del informe).
 
 # Propósito
 
@@ -73,7 +73,7 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 | V1.1 Rango válido | Toda métrica de tipo proporción (accuracy, precisión, exhaustividad, F1, AUC) que aparece en las salidas está en [0, 1]. | Alguna está fuera de [0, 1] o es NaN. | No hay métricas numéricas en salidas guardadas. |
 | V1.2 Consistencia con la matriz | Las métricas reportadas, recalculadas desde la matriz de confusión con la operación escrita en el informe, coinciden con diferencia absoluta ≤ 0.001. | Alguna difiere en más de 0.001. | No hay matriz de confusión en las salidas. |
 | V1.3 Clase positiva correcta | Las métricas atribuidas a una clase se calculan con la etiqueta de esa clase según la codificación del paso 3 (p. ej. `pos_label=0` si `0 = maligno`), o con un reporte por clase (`classification_report`) que las etiqueta correctamente. | Se presentan como métricas de una clase pero se calcularon con otra etiqueta (p. ej. el `pos_label=1` por defecto cuando la clase está codificada como 0). | No se puede establecer la codificación de la variable objetivo. |
-| V1.4 No solo accuracy con desbalance | Con desbalance (razón ≥ 1.5), se reportan exhaustividad y precisión (o F1) de la clase de interés **y** la matriz de confusión o la línea base de la clase mayoritaria. Sin desbalance (razón < 1.5), reportar solo accuracy también PASA. | Hay desbalance y la única métrica reportada es accuracy. | No se puede calcular la razón de desbalance. |
+| V1.4 No solo accuracy con desbalance | Con desbalance (razón ≥ 1.5), el **código** del proyecto calcula para reportar exhaustividad y precisión (o F1) de la clase de interés **y** la matriz de confusión o la línea base de la clase mayoritaria. Sin desbalance (razón < 1.5), reportar solo accuracy también PASA. | Hay desbalance y la única métrica que el **código** calcula es accuracy (p. ej. solo se importa o se llama `accuracy_score`). Se juzga el código, no las salidas: si la ejecución falló antes de imprimir, sigue siendo FALLA, porque el defecto es de diseño y no depende de que la celda haya corrido. | No se puede calcular la razón de desbalance. |
 | V1.5 Métrica acorde al costo | El proyecto declara (en el código, en una celda de texto o en un archivo de apoyo, citado) qué error cuesta más, FN o FP, y la métrica prioritaria penaliza ese error: exhaustividad si el FN es más caro, precisión si el FP es más caro. | El proyecto tiene una clase de interés identificable (una clase que el propio proyecto describe como la que importa detectar, p. ej. maligno o churn, citada) y no declara el costo de los errores, o la métrica prioritaria no corresponde al error más caro. | El proyecto no identifica ninguna clase de interés ni costos distintos por tipo de error (p. ej. multiclase sin costos declarados): se anota el motivo. |
 
 ## V2 — Partición de datos

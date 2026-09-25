@@ -5,10 +5,10 @@ argument-hint: <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ningu
 arguments: [ruta, objetivo, subgrupos, informe]
 disallowed-tools: Edit NotebookEdit
 metadata:
-  version: "1.3"
+  version: "1.4"
 ---
 
-**Versión de esta Skill: 1.3** (este número es el que se escribe en el campo `Skill` del informe).
+**Versión de esta Skill: 1.4** (este número es el que se escribe en el campo `Skill` del informe).
 
 # Propósito
 
@@ -42,7 +42,7 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 
 # Pasos
 
-1. **Delimitar el alcance.** Listar los archivos que se van a auditar (ruta completa) y los archivos de apoyo encontrados. Si `$ruta` no existe, detenerse e informar.
+1. **Delimitar el alcance.** Listar los archivos que se van a auditar (ruta completa) y los archivos de apoyo encontrados. Si `$ruta` no existe, detenerse e informar. Si `$ruta` existe pero no contiene código que entrene o evalúe un modelo (p. ej. solo un archivo de datos `.csv`), **no se detiene ni se pregunta**: se inspecciona lo que haya (encabezado y columnas del archivo de datos, citando `archivo:línea`), se escriben los 15 subcriterios en `NO SE PUEDE DETERMINAR` con el motivo "no hay código de modelo que auditar" (salvo los que puedan decidirse solo con los datos, citando la línea) y se entrega el informe igual (regla 7).
 2. **Leer completo sin modificar.** Leer cada notebook completo con `Read`, incluidas las salidas guardadas, y cada script completo. Anotar el índice y el `id` de cada celda relevante.
 3. **Fijar las entradas.** Determinar la columna objetivo, su codificación (qué valor corresponde a cada clase, citando la línea de carga) y los subgrupos, según la tabla de Entradas. Determinar si el problema es de clasificación o de regresión y citar el estimador.
 4. **Inventario del flujo.** Localizar y citar:

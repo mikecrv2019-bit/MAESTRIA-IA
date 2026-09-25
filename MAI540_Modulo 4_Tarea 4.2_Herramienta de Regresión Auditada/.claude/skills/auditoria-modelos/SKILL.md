@@ -1,14 +1,16 @@
 ---
 name: auditoria-modelos
-description: Audita un proyecto de machine learning supervisado (notebook .ipynb o script .py) y emite un informe AUDIT_REPORT.md con veredictos PASA / FALLA / NO SE PUEDE DETERMINAR, cada uno con evidencia (celda o línea). Revisa métricas reportadas, partición de datos, fuga de información, disparidad entre subgrupos, validez de los datos de entrada y variables no admisibles. Usar cuando se pida auditar, revisar o validar un modelo, un pipeline de entrenamiento o su evaluación. Solo audita, no modifica el código.
+description: Audita un proyecto de machine learning supervisado, de clasificación o de regresión (notebook .ipynb o script .py), y emite un informe AUDIT_REPORT.md con veredictos PASA / FALLA / NO SE PUEDE DETERMINAR, cada uno con evidencia (celda o línea). Revisa métricas reportadas (en regresión, MSE/RMSE/R², referencia trivial y residuos), partición de datos, fuga de información, disparidad entre subgrupos (en regresión, RMSE por subgrupo), validez de los datos de entrada y variables no admisibles. Usar cuando se pida auditar, revisar o validar un modelo, un pipeline de entrenamiento o su evaluación. Solo audita, no modifica el código.
 argument-hint: <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ninguna> [nombre-del-informe]
 arguments: [ruta, objetivo, subgrupos, informe]
 disallowed-tools: Edit NotebookEdit
 metadata:
-  version: "1.4"
+  version: "2.0"
 ---
 
-**Versión de esta Skill: 1.4** (este número es el que se escribe en el campo `Skill` del informe).
+**Versión de esta Skill: 2.0** (este número es el que se escribe en el campo `Skill` del informe).
+
+> **Cambio de la v2.0 (Tarea 4.2):** se agregan criterios de **regresión** para V1.1–V1.5, V2.3, V4.1 y V4.2. Los criterios de clasificación no cambian. Los IDs, el número de subcriterios (15) y la plantilla del informe son los mismos. En el paso 3 se determina el tipo de problema; desde ahí se usa la tabla de clasificación o la de regresión de cada criterio. V2.1, V2.2, V2.4, V3, V5 y V6 son comunes a ambos tipos.
 
 # Propósito
 
@@ -44,7 +46,7 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 
 1. **Delimitar el alcance.** Listar los archivos que se van a auditar (ruta completa) y los archivos de apoyo encontrados. Si `$ruta` no existe, detenerse e informar. Si `$ruta` existe pero no contiene código que entrene o evalúe un modelo (p. ej. solo un archivo de datos `.csv`), **no se detiene ni se pregunta**: se inspecciona lo que haya (encabezado y columnas del archivo de datos, citando `archivo:línea`), se escriben los 15 subcriterios en `NO SE PUEDE DETERMINAR` con el motivo "no hay código de modelo que auditar" (salvo los que puedan decidirse solo con los datos, citando la línea) y se entrega el informe igual (regla 7).
 2. **Leer completo sin modificar.** Leer cada notebook completo con `Read`, incluidas las salidas guardadas, y cada script completo. Anotar el índice y el `id` de cada celda relevante.
-3. **Fijar las entradas.** Determinar la columna objetivo, su codificación (qué valor corresponde a cada clase, citando la línea de carga) y los subgrupos, según la tabla de Entradas. Determinar si el problema es de clasificación o de regresión y citar el estimador.
+3. **Fijar las entradas.** Determinar la columna objetivo, su codificación (qué valor corresponde a cada clase, citando la línea de carga) y los subgrupos, según la tabla de Entradas. Determinar si el problema es de clasificación o de regresión y citar el estimador. Es regresión si los estimadores son regresores (`*Regressor`, `LinearRegression`, `Ridge`, `Lasso`, etc.) y la objetivo es continua; en ese caso, en lugar de la codificación se anotan las unidades de la objetivo, citando dónde las declara el proyecto. **El tipo de problema decide qué tabla de criterios se aplica** (clasificación o regresión) en V1, V2.3 y V4.
 4. **Inventario del flujo.** Localizar y citar:
    - la carga de datos y la construcción de columnas;
    - la lista final de predictores;
@@ -64,9 +66,11 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 
 # Criterios de verificación
 
-**Definición de desbalance:** `n(clase mayoritaria) / n(clase minoritaria) ≥ 1.5`, calculado con la distribución de la variable objetivo que muestre el proyecto (salida citada). Si el proyecto no la muestra y no se puede leer del código, lo que depende del desbalance queda en `NO SE PUEDE DETERMINAR`.
+**Definición de desbalance** (solo clasificación): `n(clase mayoritaria) / n(clase minoritaria) ≥ 1.5`, calculado con la distribución de la variable objetivo que muestre el proyecto (salida citada). Si el proyecto no la muestra y no se puede leer del código, lo que depende del desbalance queda en `NO SE PUEDE DETERMINAR`.
 
 ## V1 — Métricas reportadas
+
+### V1 en clasificación
 
 | ID | PASA si… | FALLA si… | NO SE PUEDE DETERMINAR si… |
 |---|---|---|---|
@@ -76,13 +80,25 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 | V1.4 No solo accuracy con desbalance | Con desbalance (razón ≥ 1.5), el **código** del proyecto calcula para reportar exhaustividad y precisión (o F1) de la clase de interés **y** la matriz de confusión o la línea base de la clase mayoritaria. Sin desbalance (razón < 1.5), reportar solo accuracy también PASA. | Hay desbalance y la única métrica que el **código** calcula es accuracy (p. ej. solo se importa o se llama `accuracy_score`). Se juzga el código, no las salidas: si la ejecución falló antes de imprimir, sigue siendo FALLA, porque el defecto es de diseño y no depende de que la celda haya corrido. | No se puede calcular la razón de desbalance. |
 | V1.5 Métrica acorde al costo | El proyecto declara (en el código, en una celda de texto o en un archivo de apoyo, citado) qué error cuesta más, FN o FP, y la métrica prioritaria penaliza ese error: exhaustividad si el FN es más caro, precisión si el FP es más caro. | El proyecto tiene una clase de interés identificable (una clase que el propio proyecto describe como la que importa detectar, p. ej. maligno o churn, citada) y no declara el costo de los errores, o la métrica prioritaria no corresponde al error más caro. | El proyecto no identifica ninguna clase de interés ni costos distintos por tipo de error (p. ej. multiclase sin costos declarados): se anota el motivo. |
 
+### V1 en regresión
+
+"Modelo final" es el que el proyecto declara como mejor o como el que usa la herramienta (citado). Si no declara ninguno, los criterios se aplican a todos los modelos comparados, salvo la referencia trivial.
+
+| ID | PASA si… | FALLA si… | NO SE PUEDE DETERMINAR si… |
+|---|---|---|---|
+| V1.1 Rango válido | Todo MSE, RMSE y MAE en las salidas es ≥ 0 y todo R² es ≤ 1 (el R² puede ser negativo). Ninguno es NaN. | Algún MSE, RMSE o MAE es negativo, algún R² es > 1, o alguno es NaN. | No hay métricas numéricas en salidas guardadas. |
+| V1.2 Coherencia entre métricas | Para cada modelo con MSE y RMSE en las salidas, \|√MSE − RMSE\| ≤ 0.001 × RMSE, con la operación escrita. Si además hay en las salidas una varianza o desviación de la objetivo en prueba (con el mismo denominador), \|(1 − MSE/Var) − R²\| ≤ 0.001, con la operación escrita. | Alguna comprobación difiere más de la tolerancia. | Las salidas no traen a la vez MSE y RMSE (o RMSE y MSE derivable) de ningún modelo. |
+| V1.3 Referencia trivial | Se evalúa sobre el mismo conjunto de prueba un modelo de referencia trivial (`DummyRegressor` u otra predicción constante, como la media o la mediana del entrenamiento), y sus métricas aparecen en las salidas junto a las de los demás modelos. | No hay modelo de referencia, o se evalúa sobre otros datos. | No se ve el código de evaluación. |
+| V1.4 Error en unidades y R², en entrenamiento y prueba | El código calcula para el modelo final una métrica de error en las unidades de la objetivo (RMSE o MAE) **y** el R², sobre prueba **y** sobre entrenamiento (o CV), y ambas aparecen en las salidas. Se juzga el código, como en clasificación. | El código calcula solo R², o solo una métrica de error, o solo sobre prueba (sin poder comparar con entrenamiento para detectar sobreajuste). | No se ve el código que calcula las métricas. |
+| V1.5 Análisis de residuos | Para el modelo final hay en el código (a) residuos contra valores predichos y (b) su distribución (histograma o resumen), y sus salidas están guardadas (figura o tabla). | No hay análisis de residuos del modelo final. | Hay código de residuos pero sin salidas guardadas. |
+
 ## V2 — Partición de datos
 
 | ID | PASA si… | FALLA si… | NO SE PUEDE DETERMINAR si… |
 |---|---|---|---|
 | V2.1 División antes del preprocesamiento que aprende | Todo `fit` / `fit_transform` de escalador, imputador, codificador o selector recibe solo datos de entrenamiento, o está dentro de un `Pipeline` que se ajusta después de dividir (incluye `cross_val_score` y `GridSearchCV` con el pipeline). También PASA si el proyecto no tiene preprocesamiento que aprenda de los datos: se cita la lista de pasos. | Algún transformador se ajusta con el conjunto completo o con datos de prueba. | El preprocesamiento está en un archivo no disponible. |
 | V2.2 Semilla fija | Cada operación aleatoria tiene `random_state` entero: `train_test_split`, `KFold`/`StratifiedKFold` con `shuffle=True`, modelos aleatorios y generación de datos sintéticos. El generador se crea dentro de la función que lo usa (no hay un `RandomState` global que avance entre llamadas). | Falta `random_state` en alguna, o se usa un generador global compartido. | No se ve el código de alguna operación aleatoria. |
-| V2.3 Estratificación | En clasificación, `train_test_split` usa `stratify=y`, y la validación cruzada usa `StratifiedKFold` o un `cv` entero con un clasificador. | Es clasificación y alguna partición no está estratificada. | No se puede determinar si es clasificación o regresión. |
+| V2.3 Estratificación | **Clasificación:** `train_test_split` usa `stratify=y`, y la validación cruzada usa `StratifiedKFold` o un `cv` entero con un clasificador. **Regresión:** no se exige estratificar por la objetivo; PASA si la partición conserva los subgrupos de V4 (estratifica por la variable de subgrupo, o las salidas muestran los recuentos por subgrupo en prueba) y todo subgrupo que quede sin filas en prueba está documentado por el proyecto (citado). | **Clasificación:** alguna partición no está estratificada. **Regresión:** algún subgrupo presente en los datos queda sin filas en prueba y el proyecto no lo documenta. | No se puede determinar si es clasificación o regresión; o, en regresión, no hay salida con los recuentos por subgrupo ni estratificación por subgrupo. |
 | V2.4 Misma partición para los modelos comparados | Todos los modelos comparados reciben **la misma variable** `X` y la misma `y` (el mismo objeto, sin transformar fuera del modelo) y el mismo esquema y semilla de partición (p. ej. una única función de evaluación). Las diferencias de preprocesamiento entre modelos solo son válidas si van **dentro** del estimador que se evalúa (p. ej. un `Pipeline`). | Algún modelo de la comparación usa otros datos, otra semilla u otra partición. "Otros datos" incluye una versión transformada fuera del estimador (p. ej. `X_escalado = StandardScaler().fit_transform(X)` pasado solo a un modelo, o un subconjunto de columnas), aunque tenga las mismas filas y la partición resultante sea idéntica. | Hay un solo modelo, sin comparación: se anota el motivo. |
 
 ## V3 — Fuga de información
@@ -93,6 +109,17 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 | V3.2 Ninguna columna posterior a la predicción | Para cada columna predictora hay evidencia (código que la genera o documentación) de que se conoce en el momento de predecir. | Alguna columna predictora se genera en el código a partir de la variable objetivo (p. ej. `np.where(df[objetivo] == …)`), o la documentación la describe como posterior al desenlace. | Hay una columna sin evidencia sobre cuándo se conoce y además una señal de alarma: accuracy de prueba = 1.0 en un problema real, o una sola variable que, según las salidas guardadas, separa las clases por sí sola con accuracy o AUC ≥ 0.99. Se nombra la columna sospechosa. Es una señal que exige evidencia, no un FALLA automático. |
 
 ## V4 — Disparidad entre subgrupos
+
+### V4 en regresión
+
+Métrica: **RMSE de prueba** del modelo final (definido en V1 en regresión) en cada subgrupo. Umbral: **razón RMSE del subgrupo / RMSE global de prueba ≤ 1.10**, salvo que el proyecto declare otro en un archivo de apoyo (se cita y se usa el declarado). Es el 0.10 del proyecto Telco expresado en términos relativos, porque un umbral absoluto depende de las unidades. Solo penaliza a los subgrupos con más error que el global. Tamaño mínimo: **20 filas del subgrupo en prueba**. Los subgrupos con menos filas se nombran como no evaluables y no impiden decidir V4.2 sobre los demás.
+
+| ID | PASA si… | FALLA si… | NO SE PUEDE DETERMINAR si… |
+|---|---|---|---|
+| V4.1 Métrica por subgrupo | El RMSE (o MSE) de prueba se calcula por separado para cada valor de cada variable de subgrupo y aparece en una salida guardada. | Hay variables de subgrupo y el error no se calcula por subgrupo. | No hay ninguna variable de subgrupo y no se entregó ninguna: se anota el motivo. |
+| V4.2 Disparidad dentro del umbral | Todos los subgrupos con ≥ 20 filas en prueba cumplen RMSE del subgrupo / RMSE global ≤ umbral, con la división escrita. | Algún subgrupo con ≥ 20 filas en prueba supera el umbral (se nombra, con su razón y su *n*). | V4.1 no es PASA, o hay menos de 2 subgrupos con ≥ 20 filas en prueba. |
+
+### V4 en clasificación
 
 Umbral: **0.10** de diferencia absoluta entre la métrica prioritaria (V1.5, o accuracy si V1.5 no la determina) de un subgrupo y la global. Es el límite que el proyecto Telco fijó para atributos protegidos (Módulo 2, `context.md`). Tamaño mínimo: **20 casos de la clase positiva** del subgrupo en prueba, porque con *n* casos uno solo mueve la exhaustividad en 1/*n*, y 1/*n* ≤ 0.05 (la mitad del umbral) exige *n* ≥ 20.
 
@@ -122,7 +149,7 @@ Un solo archivo Markdown en la carpeta del proyecto auditado (`$informe` o `AUDI
 
 - **Archivos auditados:** <rutas>
 - **Archivos de apoyo leídos:** <rutas o "ninguno">
-- **Columna objetivo:** <nombre> — codificación: <p. ej. 0 = maligno, 1 = benigno> (evidencia: <celda/línea>)
+- **Columna objetivo:** <nombre> — codificación: <p. ej. 0 = maligno, 1 = benigno; en regresión, unidades: p. ej. g/km> (evidencia: <celda/línea>)
 - **Tipo de problema:** <clasificación binaria / multiclase / regresión> (evidencia: <celda/línea>)
 - **Subgrupos:** <columnas o "ninguno"> (origen: <argumento / encontrado en celda/línea>)
 - **Skill:** auditoria-modelos v<versión indicada al inicio de este archivo, p. ej. 1.1> — fecha: <AAAA-MM-DD>

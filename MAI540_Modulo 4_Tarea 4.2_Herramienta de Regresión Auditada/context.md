@@ -59,6 +59,7 @@ Una regresión lineal de CO₂ con **solo** `Fuel Consumption Comb (L/100 km)`, 
 - 1.103 filas son duplicados exactos de otra fila.
 - Sin contar la objetivo, 1.701 filas repiten las mismas 11 columnas; es decir, hay 598 filas con predictoras idénticas y CO₂ distinto. Riesgo para la partición: un mismo vehículo puede quedar a la vez en entrenamiento y en prueba.
 - Decisión del paso 2 (usuario): los 1.103 duplicados exactos se eliminan con `drop_duplicates()` sobre las 12 columnas originales, antes de la partición; quedan 6.282 filas. Las filas con predictoras iguales y CO₂ distinto se conservan.
+- Corrección del paso 6 (usuario): `drop_duplicates()` no detectaba 292 filas del mismo vehículo escrito con distinta capitalización en `Make` o `Model` (por ejemplo, "Colorado ZR2 4WD" y "COLORADO ZR2 4WD"). En la partición original, 98 filas de prueba tenían su gemelo en entrenamiento. **Regla vigente:** antes de la partición, `Make` y `Model` se pasan a mayúsculas y sin espacios sobrantes, y luego se aplica `drop_duplicates()`; quedan 5.990 filas. El modelo final de la herramienta se entrena con estos datos.
 - Variable objetivo: media 250,58 g/km, desviación estándar 58,51, mínimo 96 y máximo 522 g/km (cuartiles 208, 246 y 288).
 
 ## Subgrupos: Fuel Type
@@ -80,7 +81,7 @@ El subgrupo N tiene una sola fila: no permite estimar un RMSE. Decisión del pas
 Regla no negociable. La partición train/test se ejecuta antes de cualquier transformación que estime parámetros de los datos (escalado, imputación, codificación). Hacerlo al revés contamina el conjunto de prueba con estadísticos del entrenamiento: es una segunda forma de fuga.
 
 1. Cargar el fichero en modo lectura.
-2. Eliminar los duplicados exactos (sobre las 12 columnas originales).
+2. Normalizar `Make` y `Model` (mayúsculas, sin espacios sobrantes) y eliminar los duplicados (sobre las 12 columnas).
 3. Eliminar las variables prohibidas y excluidas.
 4. Separar la variable objetivo.
 5. Particionar 75/25 con semilla fija (`random_state = 42`), estratificando por `Fuel Type` las filas X, Z, E y D. La fila N se agrega solo al entrenamiento.
@@ -132,6 +133,6 @@ Partición hold-out con semilla fija. El conjunto de prueba se usa una sola vez,
 ## Límites de uso del modelo
 
 - No sustituye la prueba oficial de homologación: es una estimación previa.
-- No se extrapola fuera del rango observado (96 a 522 g/km) ni a tipos de vehículo o combustible no representados (por ejemplo, eléctricos o híbridos enchufables).
+- No se extrapola fuera del rango de entrenamiento del modelo final (99 a 488 g/km) ni a tipos de vehículo o combustible no representados (por ejemplo, eléctricos o híbridos enchufables).
 - Gas natural (N) está representado por una sola fila: su error no se puede evaluar y la herramienta no debe usarse para ese combustible.
 - No establece causas: las asociaciones observadas son correlacionales.

@@ -109,6 +109,10 @@ Pipeline no es preferencia de estilo: impide estructuralmente invertir 7 y 8. Lo
 | RMSE por subgrupo de Fuel Type | Disparidad | Detecta tipos de combustible donde el error es sistemáticamente mayor. |
 | Residuos del mejor modelo | Diagnóstico | Curvatura, heterocedasticidad o grupos con sesgo sistemático. |
 
+## Umbral de disparidad entre subgrupos
+
+Decisión del usuario (paso 5): el RMSE de prueba de un subgrupo de `Fuel Type` dividido por el RMSE global de prueba del mismo modelo debe ser **≤ 1,10**. Es el umbral de 0,10 del proyecto Telco (Módulo 2), expresado en términos relativos. Solo se evalúan los subgrupos con al menos 20 filas en prueba; el resto se reporta como "no evaluable".
+
 ## Línea base
 
 El DummyRegressor que predice siempre la media del entrenamiento es la referencia obligatoria: tiene R² ≈ 0 en prueba y un RMSE cercano a la desviación estándar del CO₂ (58,51 g/km en el dataset completo). Todo modelo se compara contra él.

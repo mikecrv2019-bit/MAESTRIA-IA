@@ -21,7 +21,7 @@ Los criterios exactos (qué hace PASA, FALLA o NO SE PUEDE DETERMINAR cada uno) 
 
 ## Cómo se invoca
 
-Desde la raíz de este repositorio (donde está `.claude/skills/`), en Claude Code:
+Abre Claude Code en la carpeta `MAI540_Modulo4_Tarea_4.1` (la que contiene `.claude/skills/`) y escribe:
 
 ```
 /auditoria-modelos <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ninguna> [nombre-del-informe]

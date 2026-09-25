@@ -59,6 +59,8 @@ El informe se guarda en la carpeta del proyecto auditado. Si ya existe un inform
 - **Solo revisa lo que cubren V1–V6.** En el notebook original de biopsias, `guardar_modelo(modelo)` y `predecir_caso(modelo, …)` usan un modelo que nunca se entrenó, y el caso de ejemplo para predecir incluye la columna con fuga. Ningún subcriterio cubre la etapa de guardado e inferencia.
 - **La restricción de solo lectura no es absoluta.** `disallowed-tools: Edit NotebookEdit` se levanta con el siguiente mensaje del usuario, y la Skill no bloquea `Bash` por sí misma. Para garantizar que no modifique nada, invócala con `--allowedTools` restringido, como en el ejemplo.
 - **El formato de evidencia supone `id` de celda.** Los notebooks en formato anterior a nbformat 4.5 no tienen `id`.
+- **El índice de celda puede salir corrido en uno; el `id` es la referencia confiable.** Al contrastar las citas con los notebooks, aparecieron desfases de una posición en las últimas celdas de los notebooks de Iris. Por ejemplo, `celda [24] (id=f7eff5a0)` es en realidad la celda 25. Para ubicar la evidencia, busca siempre por `id`. Este fallo no está corregido.
+- **Con un archivo de datos sin código (p. ej. solo `.csv`)**, la auditoría solo puede describir los datos: los 15 subcriterios quedan en `NO SE PUEDE DETERMINAR`.
 - **Los veredictos los emite un modelo de lenguaje.** La estabilidad se probó repitiendo auditorías sobre el mismo proyecto. Aun así, verifica la evidencia citada antes de actuar.
 
 ## Historial de versiones
@@ -69,3 +71,4 @@ El informe se guarda en la carpeta del proyecto auditado. Si ya existe un inform
 | 1.1 | Prohíbe reutilizar informes `AUDIT_REPORT*.md` anteriores y escribe la versión en el cuerpo del `SKILL.md` | Una segunda ejecución sobre biopsias leyó el informe anterior y repitió sus veredictos sin auditar. Además, un informe salió sin número de versión, porque el encabezado YAML no siempre es visible para el modelo. |
 | 1.2 | V2.4: "mismos datos" = la misma variable `X`, sin transformar fuera del estimador | Con un defecto inyectado (KNN evaluado con `X_escalado`, los demás modelos con `X`), la v1.1 dio PASA porque "las filas son las mismas". |
 | 1.3 | V1.4 se juzga por el código, no por las salidas | Dos ejecuciones de la v1.1 sobre el mismo notebook de biopsias dieron FALLA y NO SE PUEDE DETERMINAR en V1.4. |
+| 1.4 | Si la ruta no tiene código de modelo, igual se escribe el informe (15 subcriterios en NO SE PUEDE DETERMINAR) | Sobre `housing.csv` (solo datos), la v1.3 terminó sin informe y pidió el notebook, contradiciendo la regla 7. |

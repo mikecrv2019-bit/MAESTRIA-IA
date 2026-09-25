@@ -1,0 +1,58 @@
+# Informe de auditoría — Iris_con_defecto_escalado
+
+- **Archivos auditados:** `Iris_con_defecto_escalado.ipynb`
+- **Archivos de apoyo leídos:** ninguno (no hay `README.md`, `context.md`, `DESCRIPCION.md` ni informes `.md` del autor en la carpeta del proyecto)
+- **Columna objetivo:** `target` (especie de flor) — codificación: 0 = setosa, 1 = versicolor, 2 = virginica (evidencia: celda [4] (id=4abcd0e9) `df['especie'] = df['target'].map(dict(enumerate(iris.target_names)))`, `y = iris.target.values`; columna objetivo no entregada como argumento, se ubicó buscando la asignación de `y` en el código)
+- **Tipo de problema:** clasificación multiclase (3 clases) (evidencia: celda [4] (id=4abcd0e9) `y = iris.target.values` con 3 valores posibles según `iris.target_names`; celda [2] (id=a16e5791) importa `LogisticRegression`, `DecisionTreeClassifier`, `GaussianNB` como estimadores de clasificación)
+- **Subgrupos:** ninguno (origen: argumento `ninguna` entregado por el usuario; confirmado por inspección — las únicas predictoras del proyecto son mediciones florales (`sepal length`, `sepal width`, `petal length`, `petal width`, celda [4]), sin atributos protegidos ni proxies)
+- **Skill:** auditoria-modelos v1.2 — fecha: 2026-09-24
+- **Modificaciones al proyecto:** ninguna (auditoría de solo lectura)
+
+## Resumen
+
+| Verificación | Resultado |
+|---|---|
+| V1 Métricas reportadas | NO SE PUEDE DETERMINAR |
+| V2 Partición de datos | FALLA |
+| V3 Fuga de información | FALLA |
+| V4 Disparidad entre subgrupos | NO SE PUEDE DETERMINAR |
+| V5 Validez de datos de entrada | PASA |
+| V6 Variables no admisibles | PASA |
+
+## Tabla de verificación
+
+| ID | Verificación | Resultado | Evidencia | Observación |
+|---|---|---|---|---|
+| V1.1 | Rango válido | PASA | celda [13] (id=baf5d90f), salida: `Regresión logística: media=0.9667 ... mínimo=0.933 máximo=1.000`; celda [15] (id=m41_knn_rf_code), salida: `KNN (escalado en pipeline, k por CV anidada): media=0.9600 ... máximo=1.000`, `Random Forest: media=0.9533 ...`; celda [19] (id=534deae5), salida: `Árbol (max_depth=2): media=0.9200 ...` | Todas las cifras de accuracy (media, desviación estándar, mínimo, máximo) de todas las salidas guardadas están dentro de [0, 1]; no se observó ningún NaN. |
+| V1.2 | Consistencia con la matriz | NO SE PUEDE DETERMINAR | (sin evidencia — se buscó `confusion_matrix`/`classification_report` en todo el notebook y no aparece en ninguna celda) | El proyecto no guarda ninguna matriz de confusión ni reporte por clase; no hay con qué recalcular las métricas reportadas. |
+| V1.3 | Clase positiva correcta | NO SE PUEDE DETERMINAR | celda [12] (id=a37aa1ce) `scores = cross_val_score(modelo, X, y, cv=cv)` (scoring por defecto = accuracy global) | Es un problema multiclase y todas las métricas reportadas son accuracy global (sin `pos_label` ni métricas por clase); no hay una métrica atribuida a una clase específica que verificar. |
+| V1.4 | No solo accuracy con desbalance | NO SE PUEDE DETERMINAR | (sin evidencia — no hay ninguna celda ni salida que muestre `value_counts`, `bincount` o un conteo de `y` por especie) | El proyecto no muestra en ninguna salida la distribución de la variable objetivo; sin esa cifra citada no se puede calcular la razón de desbalance (mayoritaria/minoritaria) que exige el criterio. |
+| V1.5 | Métrica acorde al costo | NO SE PUEDE DETERMINAR | celda [0] (id=2c087a52), texto: "clasificarlas... comparar con evidencia, y recomendar cuál usarías" (no menciona costos de FN/FP); no hay archivos de apoyo | Es un problema multiclase (3 especies) sin una clase de interés declarada ni costos distintos por tipo de error en ninguna celda de texto ni archivo de apoyo. |
+| V2.1 | División antes del preprocesamiento que aprende | FALLA | celda [15] (id=m41_knn_rf_code): `X_escalado = StandardScaler().fit_transform(X)  # escalado de todo X antes de la validación cruzada` | El propio comentario del código admite que el `StandardScaler` se ajusta (`fit_transform`) sobre las 150 filas de `X` completo, antes de que `evaluar_con_cv` divida en particiones. Además, `construir_knn_con_seleccion_de_k()` construye `Pipeline([('knn', KNeighborsClassifier())])` — sin ningún paso de escalado — pese a que el comentario de esa misma función dice `# Pipeline (escalador + KNN)...` y la celda de texto [14] (id=m41_knn_rf_md) afirma "El `StandardScaler` va dentro de un `Pipeline`": la documentación describe un diseño que el código no implementa. |
+| V2.2 | Semilla fija | PASA | celda [12] (id=a37aa1ce) `cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=RANDOM_STATE)`; celda [9] (id=ddd20eb3) `DecisionTreeClassifier(max_depth=3, random_state=RANDOM_STATE)`; celda [15] (id=m41_knn_rf_code) `RandomForestClassifier(n_estimators=100, random_state=RANDOM_STATE)` y `cv_interna = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)` | Toda operación aleatoria (particiones con `shuffle=True`, árbol, bosque) fija `random_state=RANDOM_STATE`, y cada generador (`StratifiedKFold`) se crea dentro de la función que lo usa, sin un generador global compartido entre llamadas. |
+| V2.3 | Estratificación | PASA | celda [12] (id=a37aa1ce) `cv = StratifiedKFold(n_splits=10, shuffle=True, random_state=RANDOM_STATE)`; celda [15] (id=m41_knn_rf_code) `cv_interna = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)` | Es clasificación (celda [4]); todas las particiones (externa e interna del `GridSearchCV`) usan `StratifiedKFold`; el notebook no usa `train_test_split` en ningún punto. |
+| V2.4 | Misma partición para los modelos comparados | FALLA | celda [24] (id=f7eff5a0), texto: "Los cinco modelos evaluados con la misma `evaluar_con_cv`... sobre las 4 variables"; celda [15] (id=m41_knn_rf_code) `scores_knn = evaluar_con_cv(construir_knn_con_seleccion_de_k(), X_escalado, y, ...)` frente a celda [13] (id=baf5d90f) `scores_logreg = evaluar_con_cv(LogisticRegression(...), X, y, ...)` | La tabla comparativa de la celda [25] (id=cadcbbdd) presenta a KNN como evaluado "sobre las 4 variables" igual que los otros cuatro modelos, pero `scores_knn` se calculó sobre `X_escalado` (una versión de `X` transformada fuera del estimador, ver V2.1), mientras que `scores_logreg`, `scores_arbol`, `scores_nb` y `scores_rf` usan `X` sin transformar. Es exactamente el caso de "versión transformada fuera del estimador" que invalida la comparación, aunque las filas sean las mismas. |
+| V3.1 | Nada se ajusta con datos de prueba | FALLA | celda [15] (id=m41_knn_rf_code): `X_escalado = StandardScaler().fit_transform(X)` seguido de `scores_knn = evaluar_con_cv(construir_knn_con_seleccion_de_k(), X_escalado, y, ...)`, donde `evaluar_con_cv` (celda [12], id=a37aa1ce) divide `X_escalado` con `StratifiedKFold` dentro de `cross_val_score` | El `StandardScaler` se ajusta con las 150 filas de `X` (incluida la porción que en cada partición de `cross_val_score` actuará como conjunto de prueba) antes de que exista esa partición. La media y desviación estándar usadas para escalar los datos de validación de cada fold ya incluyen información de esos mismos datos de validación: es fuga de información hacia el preprocesamiento. |
+| V3.2 | Ninguna columna posterior a la predicción | PASA | celda [4] (id=4abcd0e9) `X = iris.data.values` (mediciones de sépalo y pétalo entregadas por `load_iris()`) | Las cuatro predictoras son medidas físicas de la flor, no se derivan de `y`/`target` en ningún punto del código. |
+| V4.1 | Métrica por subgrupo | NO SE PUEDE DETERMINAR | argumento `subgrupos = ninguna`; celda [4] (id=4abcd0e9) `X = iris.data.values` (solo `sepal length/width`, `petal length/width`) | No hay ninguna variable de subgrupo en el proyecto (las predictoras son solo medidas florales, sin atributos protegidos ni proxies) y el usuario no entregó ninguna. |
+| V4.2 | Disparidad dentro del umbral | NO SE PUEDE DETERMINAR | (depende de V4.1) | V4.1 no es PASA: no hay subgrupos que evaluar. |
+| V5.1 | Sin `inf`/`NaN` al entrenar | PASA | celda [4] (id=4abcd0e9) `X = iris.data.values`, `y = iris.target.values`, `df['especie'] = df['target'].map(dict(enumerate(iris.target_names)))` | Los datos provienen de `load_iris()` (dataset embebido de `scikit-learn`, sin valores faltantes); la única columna derivada (`especie`) se construye con un mapeo de diccionario sobre los valores conocidos 0/1/2, sin divisiones entre columnas, `errors="coerce"` ni uniones que puedan producir `inf`/`NaN`. |
+| V6.1 | Sin identificadores ni atributos prohibidos | PASA | celda [4] (id=4abcd0e9) `X = iris.data.values` (`sepal length (cm)`, `sepal width (cm)`, `petal length (cm)`, `petal width (cm)`) | Las predictoras son cuatro medidas continuas; ninguna es un identificador por fila ni un atributo que algún archivo de apoyo declare prohibido (no existen archivos de apoyo en el proyecto). |
+
+## Acciones recomendadas
+
+1. **[V2.1]** Mover el `StandardScaler` dentro del `Pipeline` de `construir_knn_con_seleccion_de_k()` (tal como afirma su propio comentario y la celda de texto [14]) y eliminar la línea `X_escalado = StandardScaler().fit_transform(X)`; pasar `X` sin transformar a `evaluar_con_cv` para que el escalador se ajuste solo con los datos de entrenamiento de cada partición. (prioridad: alta)
+2. **[V2.4]** Una vez corregido V2.1, evaluar KNN con la misma variable `X` (sin transformar fuera del estimador) que los demás modelos, para que la tabla comparativa de la sección 8 compare a los cinco clasificadores sobre exactamente los mismos datos. (prioridad: alta)
+3. **[V3.1]** Mismo cambio que la acción 1: al mover el escalador dentro del pipeline, el conjunto de prueba de cada partición externa deja de intervenir en el ajuste del transformador. (prioridad: alta)
+4. **[V1.2]** Agregar una matriz de confusión guardada (o `classification_report`) en al menos una evaluación, para poder verificar la consistencia de las métricas reportadas. (prioridad: media)
+5. **[V1.3]** Si en el futuro se reportan métricas por clase (precisión, exhaustividad), indicar explícitamente a qué clase corresponden (por ejemplo con `classification_report` o `pos_label`). (prioridad: media)
+6. **[V1.4]** Mostrar en una celda la distribución de clases de `y` (p. ej. `pd.Series(y).value_counts()`) para poder calcular y citar la razón de desbalance. (prioridad: media)
+7. **[V1.5]** Si se quiere justificar por qué la métrica prioritaria es el accuracy, agregar una celda de texto que declare si hay una confusión entre especies más costosa que otra; en un ejercicio multiclase sin costos declarados esto puede quedar documentado como decisión explícita. (prioridad: media)
+8. **[V4.1 / V4.2]** No aplica a este proyecto (dataset Iris sin atributos protegidos ni proxies); si se reutiliza este flujo con datos que sí los tengan, agregar el cálculo de la métrica por subgrupo. (prioridad: media)
+
+## Limitaciones de esta auditoría
+
+- No hay matriz de confusión ni reporte por clase guardado en el notebook, por lo que V1.2 y V1.3 no se pudieron verificar con evidencia numérica.
+- El proyecto no muestra la distribución de clases de la variable objetivo en ninguna salida, por lo que no se pudo calcular la razón de desbalance que exige V1.4 (aunque el dataset Iris es, por diseño externo conocido, balanceado, esa cifra no está citada dentro del propio proyecto y por regla de evidencia no se usó).
+- El proyecto no declara costos distintos por tipo de error (es un ejercicio multiclase de comparación de clasificadores), por lo que V1.5 queda sin poder determinarse en vez de fallar.
+- No existen variables de subgrupo en el proyecto ni se entregó ninguna, por lo que V4 no pudo evaluarse.

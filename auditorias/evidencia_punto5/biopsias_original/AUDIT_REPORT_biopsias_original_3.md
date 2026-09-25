@@ -1,0 +1,59 @@
+# Informe de auditoría — App de Diagnóstico de Biopsias de Mama
+
+- **Archivos auditados:** `App_Diagnostico_Biopsias_Mama.ipynb`
+- **Archivos de apoyo leídos:** ninguno (no hay `README.md`, `context.md` ni `DESCRIPCION.md` en la carpeta del proyecto)
+- **Columna objetivo:** `diagnostico` — codificación: 0 = maligno, 1 = benigno (evidencia: celda [4] (id=bbb980c2), `df['diagnostico'] = data.target  # 0 = maligno, 1 = benigno`)
+- **Tipo de problema:** clasificación binaria (evidencia: celda [2] (id=b7d1693a), `from sklearn.linear_model import LogisticRegression`; celda [6] (id=cba9b56a), salida `diagnostico\n1    0.627\n0    0.373`)
+- **Subgrupos:** ninguno (origen: argumento entregado explícitamente como "ninguna"; el dataset tampoco contiene columnas de sexo/género, edad, estado civil o situación familiar ni proxies de esos atributos)
+- **Skill:** auditoria-modelos v1.1 — fecha: 2026-09-24
+- **Modificaciones al proyecto:** ninguna (auditoría de solo lectura)
+
+## Resumen
+
+| Verificación | Resultado |
+|---|---|
+| V1 Métricas reportadas | FALLA |
+| V2 Partición de datos | FALLA |
+| V3 Fuga de información | FALLA |
+| V4 Disparidad entre subgrupos | NO SE PUEDE DETERMINAR |
+| V5 Validez de datos de entrada | FALLA |
+| V6 Variables no admisibles | PASA |
+
+## Tabla de verificación
+
+| ID | Verificación | Resultado | Evidencia | Observación |
+|---|---|---|---|---|
+| V1.1 | Rango válido | NO SE PUEDE DETERMINAR | celda [18] (id=93d6fc8f), salida: `ValueError: Input X contains infinity...` (traceback, sin `print` de accuracy ejecutado) | El entrenamiento nunca terminó en el estado guardado del notebook; no hay ninguna métrica numérica (accuracy, precisión, exhaustividad, F1, AUC) en ninguna salida guardada del archivo. |
+| V1.2 | Consistencia con la matriz | NO SE PUEDE DETERMINAR | (ninguna salida contiene una matriz de confusión) | No existe ninguna matriz de confusión en las salidas guardadas; nadie calcula ni imprime `confusion_matrix` en el notebook. |
+| V1.3 | Clase positiva correcta | NO SE PUEDE DETERMINAR | celda [4] (id=bbb980c2), `# 0 = maligno, 1 = benigno` | La codificación sí está establecida, pero no hay ninguna métrica por clase reportada en las salidas guardadas contra la cual verificar el `pos_label`; no aplica ni PASA ni FALLA porque no hay nada que revisar. |
+| V1.4 | No solo accuracy con desbalance | NO SE PUEDE DETERMINAR | celda [6] (id=cba9b56a), salida `diagnostico\n1    0.627\n0    0.373`; razón = 0.627/0.373 = 1.6810 ≥ 1.5 (desbalance) | Hay desbalance (razón ≈ 1.68), pero la celda que imprimiría accuracy (celda [18], id=93d6fc8f) falla antes de ejecutar los `print`; no se reportó ni accuracy ni ninguna otra métrica, por lo que no se puede evaluar si "accuracy" fue la única métrica mostrada. |
+| V1.5 | Métrica acorde al costo | FALLA | celda [0] (id=4769b499), `Esta aplicación estima... si un tumor es maligno o benigno... para priorizar qué casos revisa primero un especialista` | El proyecto identifica una clase de interés (maligno: es la que motiva la app y cuyo caso "hay que priorizar"), pero en ningún lugar del notebook ni en archivos de apoyo se declara explícitamente que un falso negativo (maligno clasificado como benigno) cueste más que un falso positivo, ni se define la métrica prioritaria en consecuencia. |
+| V2.1 | División antes del preprocesamiento que aprende | PASA | celda [12] (id=b397da6d), `df['variabilidad_por_biopsia'] = df['mean texture'] / df['num_biopsias_previas']` (transformación fila a fila, no aprende estadísticos del dataset); celda [16] (id=881f59c8), `train_test_split(...)` seguido de `modelo.fit(X_train, y_train)` | El único paso que "aprende" de los datos es el `LogisticRegression.fit`, y se ajusta solo sobre `X_train` después de la partición. No hay escalador, imputador ni codificador que se ajuste antes de dividir. |
+| V2.2 | Semilla fija | FALLA | celda [2] (id=b7d1693a), `rng = np.random.RandomState(RANDOM_STATE)` (creado una sola vez, fuera de cualquier función); celda [4] (id=bbb980c2), `def cargar_datos(): ... rng.randint(0, 4, size=n)` (usa el `rng` externo) | `rng` es un generador global compartido que avanza con cada llamada a `cargar_datos()`, en vez de crearse dentro de la función. Evidencia de que esto rompe la reproducibilidad: celda [10] (id=fbef5102) reporta `{'variabilidad_por_biopsia': {'nulos': 0, 'infinitos': 140}}` para una llamada a `cargar_datos()`, y celda [14] (id=7b2e899e) reporta `Valores no finitos (inf/NaN) en la columna: 135 de 569` para otra llamada — con la misma `RANDOM_STATE=42`, dos cómputos de "filas con `num_biopsias_previas == 0`" deberían coincidir y no coinciden (140 vs. 135). |
+| V2.3 | Estratificación | FALLA | celda [16] (id=881f59c8), `train_test_split(X, y, test_size=0.25, random_state=RANDOM_STATE)` | Es clasificación binaria y la única partición del proyecto no usa `stratify=y`, pese a que `diagnostico` está desbalanceado (razón ≈ 1.68). |
+| V2.4 | Misma partición para los modelos comparados | NO SE PUEDE DETERMINAR | celda [16] (id=881f59c8), `def entrenar_modelo(df, usar_class_weight=False):`; celda [18] (id=93d6fc8f), `entrenar_modelo(df)` | `entrenar_modelo` admite `usar_class_weight`, pero en todo el notebook solo se invoca una vez, con el valor por defecto (`False`). No hay una segunda corrida ni comparación entre modelos que auditar. |
+| V3.1 | Nada se ajusta con datos de prueba | PASA | celda [16] (id=881f59c8), `X_train, X_test, y_train, y_test = train_test_split(...)` seguido de `modelo.fit(X_train, y_train)`; celda [12] (id=b397da6d), transformación fila a fila sin ajuste | No hay selección de variables, umbral ni hiperparámetros basada en el conjunto de prueba; el único ajuste (`LogisticRegression.fit`) usa solo `X_train`. La característica derivada se calcula antes de dividir, pero es una operación por fila (no usa estadísticos de otras filas), así que no filtra información entre train y test. |
+| V3.2 | Ninguna columna posterior a la predicción | FALLA | celda [4] (id=bbb980c2), `df['sesiones_tratamiento_programadas'] = np.where(df['diagnostico'] == 0, rng.randint(3, 9, size=n), 0,)` | La columna `sesiones_tratamiento_programadas`, incluida como predictora (celda [16], id=881f59c8, en `COLUMNAS_PREDICTORAS`), se construye directamente a partir de la variable objetivo `diagnostico`. En la práctica, cuántas sesiones de tratamiento tiene programadas una paciente solo se sabe después del diagnóstico, no en el momento de predecir. |
+| V4.1 | Métrica por subgrupo | NO SE PUEDE DETERMINAR | (no aplica) | El proyecto no tiene ninguna columna de subgrupo protegido (sexo/género, edad, estado civil, situación familiar) ni proxy de esos atributos, y se entregó explícitamente "ninguna" como subgrupo a auditar. |
+| V4.2 | Disparidad dentro del umbral | NO SE PUEDE DETERMINAR | (depende de V4.1) | V4.1 no es PASA (no hay subgrupos que evaluar). |
+| V5.1 | Sin `inf`/`NaN` al entrenar | FALLA | celda [12] (id=b397da6d), `df['variabilidad_por_biopsia'] = df['mean texture'] / df['num_biopsias_previas']` (sin protección contra denominador 0); celda [10] (id=fbef5102), salida `2) Con la derivada: {'variabilidad_por_biopsia': {'nulos': 0, 'infinitos': 140}}`; celda [18] (id=93d6fc8f), salida `ValueError: Input X contains infinity or a value too large for dtype('float64').` | La división por `num_biopsias_previas` (que puede valer 0) genera valores infinitos — 140 filas en una de las corridas guardadas — y no se tratan (ni se imputan, ni se excluyen, ni hay un paso de limpieza en el pipeline) antes de `modelo.fit`, lo que hace fallar el entrenamiento con una excepción no manejada. |
+| V6.1 | Sin identificadores ni atributos prohibidos | PASA | celda [16] (id=881f59c8), `COLUMNAS_PREDICTORAS = ['mean texture', 'mean smoothness', 'mean symmetry', 'mean fractal dimension', 'texture error', 'smoothness error', 'symmetry error', 'variabilidad_por_biopsia', 'num_biopsias_previas', 'sesiones_tratamiento_programadas']` | Ninguna de las predictoras es un identificador único de fila, y el proyecto no declara ningún atributo prohibido. (`sesiones_tratamiento_programadas` es problemática por fuga de información — ver V3.2 — pero no por ser un identificador o un atributo declarado prohibido, que es lo que evalúa este criterio.) |
+
+## Acciones recomendadas
+
+1. **[V5.1]** Proteger la división en `construir_caracteristicas` (celda [12], id=b397da6d) contra `num_biopsias_previas == 0` (p. ej. sumar 1 al denominador, o imputar/excluir esas filas) antes de entrenar; hoy genera 140 valores infinitos que hacen fallar `modelo.fit` (celda [18], id=93d6fc8f). (prioridad: alta)
+2. **[V3.2]** Dejar de construir `sesiones_tratamiento_programadas` a partir de `diagnostico` (celda [4], id=bbb980c2) y, si se conserva la columna, quitarla de `COLUMNAS_PREDICTORAS` (celda [16], id=881f59c8) — hoy es una función directa de la propia etiqueta, algo que no se conoce en el momento de predecir un caso nuevo. (prioridad: alta)
+3. **[V2.2]** Crear el generador aleatorio (`np.random.RandomState(RANDOM_STATE)`) dentro de `cargar_datos()` en vez de a nivel de módulo (celda [2], id=b7d1693a), para que cada llamada con la misma semilla produzca exactamente los mismos datos sintéticos. (prioridad: alta)
+4. **[V2.3]** Agregar `stratify=y` a `train_test_split` en `entrenar_modelo` (celda [16], id=881f59c8), porque `diagnostico` está desbalanceado (62.7 % / 37.3 %). (prioridad: alta)
+5. **[V1.5]** Declarar explícitamente, en el notebook o en un archivo de contexto, qué error cuesta más (falso negativo o falso positivo) para la clase maligno, y alinear la métrica prioritaria con ese costo una vez el entrenamiento pueda ejecutarse. (prioridad: alta)
+6. **[V1.1, V1.2, V1.3, V1.4]** Una vez corregido V5.1, volver a ejecutar el notebook de punta a punta y dejar guardadas las salidas de accuracy, precisión, exhaustividad y la matriz de confusión; hoy no existe ninguna, porque el entrenamiento nunca terminó. (prioridad: media)
+7. **[V2.4]** Si se quiere comparar `usar_class_weight=True` contra `False` (el parámetro ya existe en `entrenar_modelo`), ejecutar y reportar ambas corridas sobre la misma partición; hoy solo se invoca una vez, con el valor por defecto. (prioridad: media)
+8. **[V4.1, V4.2]** Si en el futuro se agregan atributos protegidos o sus proxies al dataset, calcular la métrica prioritaria por subgrupo sobre el conjunto de prueba; hoy el proyecto no tiene ninguna variable de este tipo. (prioridad: media)
+
+## Limitaciones de esta auditoría
+
+- El notebook no completó el entrenamiento en su estado guardado (celda [18], id=93d6fc8f, `ValueError`), por lo que no hay accuracy, precisión, exhaustividad, F1 ni matriz de confusión en ninguna salida guardada. Todo lo que depende de esas cifras (V1.1, V1.2, V1.3, V1.4) quedó en NO SE PUEDE DETERMINAR.
+- Las celdas posteriores a la que falla (`coeficientes`, celda [20] id=b004c030; `guardar_modelo`, celda [22] id=9ce4b8ab; `predecir_caso`, celda [24] id=103aad66) tienen `"outputs": []` en el archivo — nunca se ejecutaron con éxito en el estado final guardado del notebook.
+- Dos salidas guardadas de ejecuciones anteriores (`execution_count` 18 y 22, en las celdas [4] y [12]) indican que el notebook se corrió muchas veces fuera de este orden lineal antes de guardarse en su estado actual; esto es evidencia adicional de la falta de reproducibilidad descrita en V2.2, pero no se usó para inferir nada más allá de eso.
+- No hay archivos de apoyo (`.md`) en la carpeta del proyecto que declaren el costo relativo de falsos negativos y falsos positivos, ni qué columnas están prohibidas.
+- Por regla de la Skill, no se ejecutó el notebook ni se importó su código (aunque la celda [0], id=4769b499, se lo pide explícitamente a quien use esta herramienta); toda la evidencia proviene de la lectura estática del archivo y de las salidas ya guardadas en él.

@@ -5,10 +5,10 @@ argument-hint: <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ningu
 arguments: [ruta, objetivo, subgrupos, informe]
 disallowed-tools: Edit NotebookEdit
 metadata:
-  version: "1.1"
+  version: "1.2"
 ---
 
-**Versión de esta Skill: 1.1** (este número es el que se escribe en el campo `Skill` del informe).
+**Versión de esta Skill: 1.2** (este número es el que se escribe en el campo `Skill` del informe).
 
 # Propósito
 
@@ -83,7 +83,7 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 | V2.1 División antes del preprocesamiento que aprende | Todo `fit` / `fit_transform` de escalador, imputador, codificador o selector recibe solo datos de entrenamiento, o está dentro de un `Pipeline` que se ajusta después de dividir (incluye `cross_val_score` y `GridSearchCV` con el pipeline). También PASA si el proyecto no tiene preprocesamiento que aprenda de los datos: se cita la lista de pasos. | Algún transformador se ajusta con el conjunto completo o con datos de prueba. | El preprocesamiento está en un archivo no disponible. |
 | V2.2 Semilla fija | Cada operación aleatoria tiene `random_state` entero: `train_test_split`, `KFold`/`StratifiedKFold` con `shuffle=True`, modelos aleatorios y generación de datos sintéticos. El generador se crea dentro de la función que lo usa (no hay un `RandomState` global que avance entre llamadas). | Falta `random_state` en alguna, o se usa un generador global compartido. | No se ve el código de alguna operación aleatoria. |
 | V2.3 Estratificación | En clasificación, `train_test_split` usa `stratify=y`, y la validación cruzada usa `StratifiedKFold` o un `cv` entero con un clasificador. | Es clasificación y alguna partición no está estratificada. | No se puede determinar si es clasificación o regresión. |
-| V2.4 Misma partición para los modelos comparados | Todos los modelos comparados usan los mismos `X`, `y` y el mismo esquema y semilla de partición (p. ej. una única función de evaluación). | Algún modelo de la comparación usa otros datos, otra semilla u otra partición. | Hay un solo modelo, sin comparación: se anota el motivo. |
+| V2.4 Misma partición para los modelos comparados | Todos los modelos comparados reciben **la misma variable** `X` y la misma `y` (el mismo objeto, sin transformar fuera del modelo) y el mismo esquema y semilla de partición (p. ej. una única función de evaluación). Las diferencias de preprocesamiento entre modelos solo son válidas si van **dentro** del estimador que se evalúa (p. ej. un `Pipeline`). | Algún modelo de la comparación usa otros datos, otra semilla u otra partición. "Otros datos" incluye una versión transformada fuera del estimador (p. ej. `X_escalado = StandardScaler().fit_transform(X)` pasado solo a un modelo, o un subconjunto de columnas), aunque tenga las mismas filas y la partición resultante sea idéntica. | Hay un solo modelo, sin comparación: se anota el motivo. |
 
 ## V3 — Fuga de información
 

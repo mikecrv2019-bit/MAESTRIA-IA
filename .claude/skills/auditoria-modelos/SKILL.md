@@ -5,8 +5,10 @@ argument-hint: <ruta-del-proyecto> <columna-objetivo> <columna(s)-subgrupo|ningu
 arguments: [ruta, objetivo, subgrupos, informe]
 disallowed-tools: Edit NotebookEdit
 metadata:
-  version: "1.0"
+  version: "1.1"
 ---
+
+**Versión de esta Skill: 1.1** (este número es el que se escribe en el campo `Skill` del informe).
 
 # Propósito
 
@@ -21,7 +23,7 @@ Verificar, con evidencia citada y sin modificar nada, si un proyecto de machine 
 | Subgrupos | `$subgrupos` | Columna o columnas (separadas por coma) que definen los subgrupos para V4, o `ninguna`. | Se buscan en las columnas del proyecto atributos protegidos o sus proxies (sexo o género, edad o `SeniorCitizen`, estado civil o `Partner`, situación familiar o `Dependents`). Se usan los que aparezcan, citando dónde. |
 | Nombre del informe | `$informe` | Nombre del archivo de salida (p. ej. `AUDIT_REPORT_biopsias_original.md`). | `AUDIT_REPORT.md`. |
 
-Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`, `context.md`, `DESCRIPCION.md` e informes `.md`. Sirven como evidencia de lo que el proyecto **declara** (costo de los errores, variables prohibidas, cuándo se conoce cada columna).
+Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`, `context.md`, `DESCRIPCION.md` e informes `.md` escritos por el autor del proyecto. Sirven como evidencia de lo que el proyecto **declara** (costo de los errores, variables prohibidas, cuándo se conoce cada columna). **Nunca son archivos de apoyo** los informes de auditorías anteriores (`AUDIT_REPORT*.md`): no se leen ni se citan (ver regla 7).
 
 # Reglas obligatorias
 
@@ -36,6 +38,7 @@ Archivos de apoyo que se leen si existen en la carpeta del proyecto: `README.md`
 4. **Sin evidencia no hay PASA.** Si no se encuentra la celda, la línea o la salida que demuestre el criterio, el veredicto es `NO SE PUEDE DETERMINAR`. Nunca se asume que algo está bien porque no se vio que estuviera mal.
 5. **No inventar números.** Toda cifra del informe es una de dos cosas: (a) una salida guardada en el proyecto, citada, o (b) aritmética sobre esas salidas, con la operación escrita (p. ej. `27/(27+12) = 0.6923`). Si el notebook no tiene salidas guardadas, lo que depende de ellas queda en `NO SE PUEDE DETERMINAR`.
 6. **Evaluar todos los subcriterios, siempre, en el orden fijo** V1.1 → V6.1. No se omite ninguno, aunque el resultado parezca obvio.
+7. **Cada ejecución es una auditoría completa e independiente.** Aunque ya exista un `AUDIT_REPORT*.md` en la carpeta, no se lee, no se reutiliza, no se compara y no se declara "ya auditado": se repiten los pasos 1 a 9 desde cero sobre el proyecto y se escribe un informe nuevo (con sufijo si el nombre existe, paso 8). Terminar sin escribir un informe nuevo es un fallo de la Skill.
 
 # Pasos
 
@@ -122,7 +125,7 @@ Un solo archivo Markdown en la carpeta del proyecto auditado (`$informe` o `AUDI
 - **Columna objetivo:** <nombre> — codificación: <p. ej. 0 = maligno, 1 = benigno> (evidencia: <celda/línea>)
 - **Tipo de problema:** <clasificación binaria / multiclase / regresión> (evidencia: <celda/línea>)
 - **Subgrupos:** <columnas o "ninguno"> (origen: <argumento / encontrado en celda/línea>)
-- **Skill:** auditoria-modelos v<versión del encabezado> — fecha: <AAAA-MM-DD>
+- **Skill:** auditoria-modelos v<versión indicada al inicio de este archivo, p. ej. 1.1> — fecha: <AAAA-MM-DD>
 - **Modificaciones al proyecto:** ninguna (auditoría de solo lectura)
 
 ## Resumen

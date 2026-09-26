@@ -40,4 +40,14 @@
 | F1 | 0,0000 | 0,6115 | +0,6115 |
 
 ## 6. Explicación propia
-_(A redactar por el estudiante con sus propias palabras; ver preguntas guía en el informe .docx.)_
+El modelo original parecía bueno porque tenía 80 % de accuracy, pero en realidad no servía. Decía "No" a todos los clientes y nunca detectaba a los insatisfechos. Sacaba 80 % solo porque el 80 % de los clientes ya está satisfecho.
+
+Para mejorarlo hice tres cosas:
+
+1. **Le di más datos.** Pasé de 3 a 10 variables. Una de ellas, el día de la semana, la saqué de la fecha.
+2. **Preparé los datos.** Rellené los vacíos, puse los números en la misma escala y convertí las categorías en 0 y 1 para que el modelo las entienda. Todo se aprende solo con los datos de entrenamiento, para no hacer trampa.
+3. **Le dije que los insatisfechos importan.** Con `class_weight="balanced"`, equivocarse con ellos pesa más.
+
+Comparé el antes y el después con los mismos datos de prueba. El accuracy casi no cambió (0,80 a 0,82), pero el recall pasó de 0 a 0,71. Ahora detecta 159 de 224 insatisfechos. A cambio hay 137 falsas alarmas, que me parece aceptable porque llamar a un cliente que estaba conforme cuesta menos que perder a uno insatisfecho.
+
+Es un modelo simple y los datos son sintéticos, así que no sé si funcionaría igual con clientes reales.
